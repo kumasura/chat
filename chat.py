@@ -1,6 +1,5 @@
 from modal import App, Image, Secret, gpu, web_endpoint
 import modal
-from llama_cpp import Llama
 app = App(
     name="chatbot"
 )  
