@@ -18,7 +18,7 @@ def chatbot(prompt: str):
     from llama_cpp import Llama
     
     # Create an instance of the Llama class and load the model
-    llama_model = Llama("/my_vol/mistral-7b-instruct-v0.2.Q8_0.gguf", n_batch=1024, n_threads=10, n_gpu_layers=-1, n_ctx = 32768)
+    llama_model = Llama("/my_vol/mistral2.gguf", n_batch=1024, n_threads=10, n_gpu_layers=-1, n_ctx = 32768)
 
     response = llm.create_chat_completion(messages=prompt)
     return response["choices"][0]["message"]["content"]
