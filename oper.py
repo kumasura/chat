@@ -7,7 +7,7 @@ import shutil
 app = modal.App()
 volume = modal.Volume.from_name("elabs-phi-verse", create_if_missing=True)
 
-@app.function(volumes={"/myvol": volume})
+#@app.function(volumes={"/myvol": volume})
 @app.local_entrypoint()
 def main():
     #g.remote()
