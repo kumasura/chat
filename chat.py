@@ -1,7 +1,6 @@
 from modal import App, Image, Secret, gpu, web_endpoint
 import modal
 from typing import Any, List, Optional
-from pydantic import BaseModel, Field
 
 # ------------------------------
 # App & Image
@@ -54,7 +53,7 @@ class ChatCompletionRequest(BaseModel):
 @web_endpoint(method="POST")
 async def v1_chat_completions(request: ChatCompletionRequest) -> Any:
     from llama_cpp import Llama
-
+    from pydantic import BaseModel, Field
     # Load model
     llm = Llama(
         model_path="/my_vol/mistral2.gguf",
