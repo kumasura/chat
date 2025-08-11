@@ -41,16 +41,28 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = None
     stream: bool = False
 
+# ---- Token count schema ----
+class TokenCountRequest(BaseModel):
+    messages: List[ChatMessage]
+    add_generation_prompt: bool = True  # same default as create_chat_completion
+
+class TokenCountResponse(BaseModel):
+    prompt_tokens: int
+    text_preview: Optional[str] = None  # helpful for debugging (first 200 chars)
+
+
 # -------------------
 # FastAPI App
 # -------------------
 web_app = FastAPI()
 
-@web_app.post("/v1/chat/completions")
-async def chat_completions(request: ChatCompletionRequest) -> Any:
-    from llama_cpp import Llama
+# ---- Llama singleton ----
+from functools import lru_cache
 
-    llm = Llama(
+@lru_cache(maxsize=1)
+def get_llm():
+    from llama_cpp import Llama
+    return Llama(
         model_path="/my_vol/mistral2.gguf",
         n_batch=1024,
         n_threads=10,
@@ -58,6 +70,39 @@ async def chat_completions(request: ChatCompletionRequest) -> Any:
         n_ctx=32768
     )
 
+@web_app.post("/v1/tokens", response_model=TokenCountResponse)
+async def count_tokens(req: TokenCountRequest) -> TokenCountResponse:
+    """
+    Returns the number of input tokens the model will see for the given chat messages.
+    Uses llama.cpp's tokenizer + chat template for *your* GGUF, so it matches generation.
+    """
+    llm = get_llm()
+    # Convert Pydantic models → dicts (role/content), same as your /v1/chat/completions
+    msgs = [{"role": m.role, "content": m.content} for m in req.messages]
+
+    # 1) Render messages with the model's chat template exactly like create_chat_completion
+    #    (keeps special tokens and system prompts consistent).
+    rendered = llm.apply_chat_template(
+        msgs,
+        add_generation_prompt=req.add_generation_prompt,
+        tokenize=False,
+    )
+
+    # 2) Tokenize rendered prompt. Keeping add_bos=True mirrors llama.cpp default behavior.
+    #    If you prefer excluding BOS from the count, set add_bos=False.
+    tokens = llm.tokenize(rendered, add_bos=True)
+
+    return TokenCountResponse(
+        prompt_tokens=len(tokens),
+        text_preview=rendered[:200]
+    )
+
+
+@web_app.post("/v1/chat/completions")
+async def chat_completions(request: ChatCompletionRequest) -> Any:
+    from llama_cpp import Llama
+
+    llm = get_llm()
     messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
     output = llm.create_chat_completion(
