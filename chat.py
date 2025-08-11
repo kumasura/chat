@@ -18,7 +18,7 @@ outlines_image = (
         "apt-get update",
         "DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata",
         "apt-get install -y software-properties-common build-essential git clang graphviz",
-        """CMAKE_ARGS="-DLLAMA_CUDA=on -DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=80" pip install llama-cpp-python >= 0.2.75 --no-cache-dir"""
+        """CMAKE_ARGS="-DLLAMA_CUDA=on -DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=80" pip install "llama-cpp-python>=0.2.75" --no-cache-dir"""
     )
     .pip_install(
         "llama-index",
