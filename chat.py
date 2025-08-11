@@ -54,7 +54,11 @@ class ChatCompletionRequest(BaseModel):
     timeout=300,  # longer timeout for large contexts
     volumes={"/my_vol": modal.Volume.from_name("elabs-phi-verse")}
 )
-@web_endpoint(method="POST", label="v1/chat/completions")
+#@web_endpoint(method="POST", label="v1/chat/completions")
+@modal.fastapi_endpoint(
+    method="POST",
+    label="v1-chat-completions"  # ✅ label rules
+)
 async def v1_chat_completions(request: ChatCompletionRequest) -> Any:
     from llama_cpp import Llama
     from pydantic import BaseModel, Field
