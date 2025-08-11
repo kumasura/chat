@@ -1,13 +1,13 @@
-from modal import App, Image, gpu, web_endpoint
+from modal import App, Image
 import modal
 from typing import Any, List, Optional
 from pydantic import BaseModel, Field
-import time
-import uuid
+from fastapi import FastAPI
+import time, uuid
 
-# ------------------------------
-# App & Image
-# ------------------------------
+# -------------------
+# Modal App + Image
+# -------------------
 app = App(name="chatbot")
 
 outlines_image = (
@@ -16,13 +16,9 @@ outlines_image = (
     )
     .run_commands(
         "apt-get update",
-        "echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections",
-        "echo 'tzdata tzdata/Zones/Europe select London' | debconf-set-selections",
         "DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata",
-        "apt-get install -y software-properties-common",
-        "add-apt-repository ppa:ubuntu-toolchain-r/test",
-        "apt-get install -y build-essential git clang graphviz",
-        """CMAKE_ARGS="-DLLAMA_CUDA=on -DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=80" pip install llama-cpp-python --no-cache-dir""",
+        "apt-get install -y software-properties-common build-essential git clang graphviz",
+        """CMAKE_ARGS="-DLLAMA_CUDA=on -DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=80" pip install llama-cpp-python --no-cache-dir"""
     )
     .pip_install(
         "llama-index",
@@ -31,9 +27,9 @@ outlines_image = (
     )
 )
 
-# ------------------------------
-# OpenAI-compatible Request Model
-# ------------------------------
+# -------------------
+# Request schema
+# -------------------
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -45,24 +41,15 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = None
     stream: bool = False
 
-# ------------------------------
-# OpenAI-compatible Endpoint
-# ------------------------------
-@app.function(
-    image=outlines_image,
-    gpu=gpu.A100(size="80GB"),
-    timeout=300,  # longer timeout for large contexts
-    volumes={"/my_vol": modal.Volume.from_name("elabs-phi-verse")}
-)
-#@web_endpoint(method="POST", label="v1/chat/completions")
-@modal.fastapi_endpoint(
-    method="POST",
-    label="v1-chat-completions"  # ✅ label rules
-)
-async def v1_chat_completions(request: ChatCompletionRequest) -> Any:
+# -------------------
+# FastAPI App
+# -------------------
+web_app = FastAPI()
+
+@web_app.post("/v1/chat/completions")
+async def chat_completions(request: ChatCompletionRequest) -> Any:
     from llama_cpp import Llama
-    from pydantic import BaseModel, Field
-    # Load LLaMA model
+
     llm = Llama(
         model_path="/my_vol/mistral2.gguf",
         n_batch=1024,
@@ -71,10 +58,8 @@ async def v1_chat_completions(request: ChatCompletionRequest) -> Any:
         n_ctx=32768
     )
 
-    # Convert request to llama-cpp's expected format
     messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
-    # Run the model
     output = llm.create_chat_completion(
         messages=messages,
         temperature=request.temperature,
@@ -82,8 +67,7 @@ async def v1_chat_completions(request: ChatCompletionRequest) -> Any:
         stream=request.stream
     )
 
-    # Prepare OpenAI-compatible response
-    response = {
+    return {
         "id": f"chatcmpl-{uuid.uuid4()}",
         "object": "chat.completion",
         "created": int(time.time()),
@@ -102,4 +86,15 @@ async def v1_chat_completions(request: ChatCompletionRequest) -> Any:
         })
     }
 
-    return response
+# -------------------
+# Mount in Modal
+# -------------------
+@app.function(
+    image=outlines_image,
+    gpu="A100-80GB",
+    timeout=300,
+    volumes={"/my_vol": modal.Volume.from_name("elabs-phi-verse")}
+)
+@modal.asgi_app()
+def fastapi_app():
+    return web_app
