@@ -25,7 +25,7 @@ jobs:
       - name: Install Modal
         run: |
           python -m pip install --upgrade pip
-          pip install modal wget pydantic
+          pip install modal wget pydantic fastapi
           
       - name: Deploy job
         run: |
