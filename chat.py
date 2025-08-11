@@ -70,6 +70,60 @@ def get_llm():
         n_ctx=32768
     )
 
+def render_mistral_chat(messages, add_generation_prompt=True):
+    """
+    Minimal Mistral-style chat template.
+    Supports: system (optional), user, assistant turns.
+    Produces the same structure llama.cpp expects for Mistral-like models.
+    """
+    sys_txt = ""
+    parts = []
+    first_user_done = False
+
+    # Extract first system message if present
+    for m in messages:
+        if m["role"] == "system":
+            sys_txt = m["content"]
+            break
+
+    # Build turns
+    for m in messages:
+        role = m["role"]
+        content = m["content"]
+
+        if role == "system":
+            # already captured; skip in sequence
+            continue
+
+        if role == "user":
+            if not first_user_done:
+                # First user message may include <<SYS>> block
+                if sys_txt:
+                    parts.append(
+                        f"<s>[INST] <<SYS>>\n{sys_txt}\n<</SYS>>\n\n{content} [/INST]"
+                    )
+                else:
+                    parts.append(f"<s>[INST] {content} [/INST]")
+                first_user_done = True
+            else:
+                parts.append(f"<s>[INST] {content} [/INST]")
+
+        elif role == "assistant":
+            # Assistant follows a completed [INST] block
+            parts.append(f"{content}</s>")
+
+        # (You can add tool/tool_calls handling here if you need it later)
+
+    # If we’re going to generate, we end after an [INST] block with no assistant yet.
+    if add_generation_prompt:
+        if not parts or parts[-1].endswith("</s>"):
+            # If last was assistant, open a fresh user turn for generation (rare)
+            parts.append("<s>[INST] [/INST]")
+        # Else the last part is an [INST] … [/INST] block already, which is fine.
+
+    return "\n".join(parts)
+
+
 @web_app.post("/v1/tokens", response_model=TokenCountResponse)
 async def count_tokens(req: TokenCountRequest) -> TokenCountResponse:
     """
@@ -78,20 +132,22 @@ async def count_tokens(req: TokenCountRequest) -> TokenCountResponse:
     """
     llm = get_llm()
     # Convert Pydantic models → dicts (role/content), same as your /v1/chat/completions
-    msgs = [{"role": m.role, "content": m.content} for m in req.messages]
 
-    # 1) Render messages with the model's chat template exactly like create_chat_completion
-    #    (keeps special tokens and system prompts consistent).
-    rendered = llm.apply_chat_template(
+    role_map = {
+    "human": "user",
+    "ai": "assistant",
+    "system": "system"
+    }
+    
+    msgs = [{"role": role_map[m.type], "content": m.content} for m in req.messages]
+    #msgs = [{"role": m.role, "content": m.content} for m in req.messages]
+
+    rendered = render_mistral_chat(
         msgs,
-        add_generation_prompt=req.add_generation_prompt,
-        tokenize=False,
+        add_generation_prompt=req.add_generation_prompt
     )
 
-    # 2) Tokenize rendered prompt. Keeping add_bos=True mirrors llama.cpp default behavior.
-    #    If you prefer excluding BOS from the count, set add_bos=False.
-    tokens = llm.tokenize(rendered, add_bos=True)
-
+    tokens = llm.tokenize(rendered.encode("utf-8"), add_bos=True)
     return TokenCountResponse(
         prompt_tokens=len(tokens),
         text_preview=rendered[:200]
