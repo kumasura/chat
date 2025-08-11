@@ -1,7 +1,7 @@
 from modal import App, Image, Secret, gpu, web_endpoint
 import modal
 from typing import Any, List, Optional
-
+from pydantic import BaseModel, Field
 # ------------------------------
 # App & Image
 # ------------------------------
