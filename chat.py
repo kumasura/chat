@@ -139,7 +139,7 @@ async def count_tokens(req: TokenCountRequest) -> TokenCountResponse:
     "system": "system"
     }
     
-    msgs = [{"role": role_map[m.type], "content": m.content} for m in req.messages]
+    msgs = [{"role": role_map[m.role], "content": m.content} for m in req.messages]
     #msgs = [{"role": m.role, "content": m.content} for m in req.messages]
 
     rendered = render_mistral_chat(
