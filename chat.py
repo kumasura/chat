@@ -189,9 +189,7 @@ async def chat_completions(request: ChatCompletionRequest) -> Any:
             stream = llm.create_chat_completion(
                 messages=messages,
                 temperature=request.temperature,
-                top_p=request.top_p,
                 max_tokens=request.max_tokens,
-                stop=request.stop,
                 stream=True,
             )
             for chunk in stream:
