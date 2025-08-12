@@ -4,6 +4,8 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, Field
 from fastapi import FastAPI
 import time, uuid
+import asyncio, json, types
+from fastapi.responses import StreamingResponse
 
 # -------------------
 # Modal App + Image
@@ -123,6 +125,27 @@ def render_mistral_chat(messages, add_generation_prompt=True):
 
     return "\n".join(parts)
 
+def _accumulate_chunks(chunks_iter):
+    content_parts = []
+    finish_reason = None
+    role = "assistant"
+    for ch in chunks_iter:
+        choice = ch.get("choices", [{}])[0]
+        # stream delta path
+        if "delta" in choice:
+            delta = choice["delta"] or {}
+            role = delta.get("role", role)
+            if "content" in delta and delta["content"]:
+                content_parts.append(delta["content"])
+            finish_reason = choice.get("finish_reason", finish_reason)
+        # some builds yield message objects even in stream
+        elif "message" in choice:
+            msg = choice["message"] or {}
+            role = msg.get("role", role)
+            if "content" in msg and msg["content"]:
+                content_parts.append(msg["content"])
+            finish_reason = choice.get("finish_reason", finish_reason)
+    return role, "".join(content_parts), finish_reason or "stop"
 
 @web_app.post("/v1/tokens", response_model=TokenCountResponse)
 async def count_tokens(req: TokenCountRequest) -> TokenCountResponse:
@@ -160,6 +183,37 @@ async def chat_completions(request: ChatCompletionRequest) -> Any:
 
     llm = get_llm()
     messages = [{"role": m.role, "content": m.content} for m in request.messages]
+
+    if request.stream:
+        async def gen():
+            stream = llm.create_chat_completion(
+                messages=messages,
+                temperature=request.temperature,
+                top_p=request.top_p,
+                max_tokens=request.max_tokens,
+                stop=request.stop,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk["choices"][0].get("delta") or {}
+                yield "data: " + json.dumps({
+                    "id": oid("chatcmpl"),
+                    "object": "chat.completion.chunk",
+                    "created": now_ts(),
+                    "model": request.model,
+                    "choices": [{"index": 0, "delta": delta, "finish_reason": None}],
+                }) + "\n\n"
+                await asyncio.sleep(0)
+            # end marker
+            yield "data: " + json.dumps({
+                "id": oid("chatcmpl"),
+                "object": "chat.completion.chunk",
+                "created": now_ts(),
+                "model": request.model,
+                "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+            }) + "\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(gen(), media_type="text/event-stream")
 
     output = llm.create_chat_completion(
         messages=messages,
