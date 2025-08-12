@@ -61,6 +61,15 @@ web_app = FastAPI()
 # ---- Llama singleton ----
 from functools import lru_cache
 
+import uuid, time
+
+def now_ts() -> int:
+    return int(time.time())
+
+def oid(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4()}"
+
+
 @lru_cache(maxsize=1)
 def get_llm():
     from llama_cpp import Llama
