@@ -180,7 +180,7 @@ async def count_tokens(req: TokenCountRequest) -> TokenCountResponse:
     )
 
     tokens = llm.tokenize(rendered.encode("utf-8"), add_bos=True)
-    print(len(tokens)
+    print(len(tokens))
     return TokenCountResponse(
         prompt_tokens=len(tokens),
         text_preview=rendered[:200]
