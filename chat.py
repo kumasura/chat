@@ -210,6 +210,7 @@ async def chat_completions(request: ChatCompletionRequest) -> Any:
                     "model": request.model,
                     "choices": [{"index": 0, "delta": delta, "finish_reason": None}],
                 }) + "\n\n"
+                print(delta)
                 await asyncio.sleep(0)
             # end marker
             yield "data: " + json.dumps({
@@ -228,6 +229,8 @@ async def chat_completions(request: ChatCompletionRequest) -> Any:
         max_tokens=request.max_tokens,
         stream=request.stream
     )
+
+    print(output["choices"][0]["message"])
 
     return {
         "id": f"chatcmpl-{uuid.uuid4()}",
