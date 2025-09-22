@@ -24,7 +24,7 @@ def download():
     import os
     import torch
     from diffusers import QwenImageEditPipeline
-    local_model_path = "./models"
+    local_model_path = "/my_vol/models"
     pipeline = QwenImageEditPipeline.from_pretrained("Qwen/Qwen-Image-Edit", cache_dir=local_model_path)
     print("pipeline loaded")
     
