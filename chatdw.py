@@ -9,8 +9,9 @@ outlines_image = (
         "python:3.13-alpine3.21"
     )
     .pip_install(
+        "torch", 
         "pip install git+https://github.com/huggingface/transformers accelerate",
-        "pip install git+https://github.com/huggingface/diffusers",        
+        "pip install git+https://github.com/huggingface/diffusers"  
     )
 )
 
