@@ -6,7 +6,7 @@ app = modal.App("Model Downloader")
 volume = modal.Volume.from_name("elabs-phi-verse", create_if_missing=True)
 outlines_image = (
     Image.from_registry(
-        "python:3.13-alpine3.21"
+        "nvidia/cuda:12.3.0-devel-ubuntu22.04", add_python="3.12"
     )
     .run_commands(
         "apt-get update",
