@@ -14,7 +14,8 @@ outlines_image = (
     )
     .pip_install(
         "torch", 
-        "git+https://github.com/huggingface/transformers accelerate",
+        "git+https://github.com/huggingface/transformers",
+        "accelerate",
         "git+https://github.com/huggingface/diffusers"  
     )
 )
