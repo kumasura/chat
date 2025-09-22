@@ -6,14 +6,15 @@ app = modal.App("Model Downloader")
 volume = modal.Volume.from_name("elabs-phi-verse", create_if_missing=True)
 outlines_image = (
     Image.from_registry(
-        "nvidia/cuda:12.3.0-devel-ubuntu22.04", add_python="3.12"
+        "nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04", add_python="3.13"
     )
     .run_commands(
         "apt-get update",
         "DEBIAN_FRONTEND=noninteractive apt-get install -y git",
     )
     .pip_install(
-        "torch", 
+        "torch",
+        "torchvision",
         "git+https://github.com/huggingface/transformers",
         "accelerate",
         "git+https://github.com/huggingface/diffusers"  
