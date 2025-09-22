@@ -7,7 +7,7 @@ volume = modal.Volume.from_name("elabs-phi-verse", create_if_missing=True)
 outlines_image = (
     Image.from_registry(
         "python:3.13-alpine3.21"
-    )
+    ).apt_install("git")
     .pip_install(
         "torch", 
         "git+https://github.com/huggingface/transformers accelerate",
