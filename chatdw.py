@@ -2,7 +2,7 @@ from modal import App, Image
 import modal
 
 
-app = modal.App()
+app = modal.App("Model Downloader")
 volume = modal.Volume.from_name("elabs-phi-verse", create_if_missing=True)
 outlines_image = (
     Image.from_registry(
@@ -15,7 +15,7 @@ outlines_image = (
 )
 
 @app.function(memory=1024*64, volumes={"/my_vol": modal.Volume.from_name("elabs-phi-verse")},secrets=[modal.Secret.from_name("huggingface-secret")],)
-def main():
+def download():
     import os
     import torch
     from diffusers import QwenImageEditPipeline
@@ -24,6 +24,10 @@ def main():
     print("pipeline loaded")
     
 
+if __name__ == "__main__":
+    with app.run():
+        download.remote()
+    print("Downloaded")
     
     
     
