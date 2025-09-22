@@ -15,7 +15,7 @@ outlines_image = (
     )
 )
 
-@app.function(memory=1024*64, volumes={"/my_vol": modal.Volume.from_name("elabs-phi-verse")},secrets=[modal.Secret.from_name("huggingface-secret")],)
+@app.function(image=outlines_image,memory=1024*64, volumes={"/my_vol": modal.Volume.from_name("elabs-phi-verse")},secrets=[modal.Secret.from_name("huggingface-secret")],)
 def download():
     import os
     import torch
